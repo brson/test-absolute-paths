@@ -1,0 +1,12 @@
+[package]
+name = "test-absolute-path"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.92"
+cargo_metadata = "0.18.1"
+clap = { version = "4.5.20", features = ["derive"] }
+home = "0.5.9"
+shell-escape = "0.1.5"
+soroban-sdk = "21.7.6"
