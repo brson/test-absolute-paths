@@ -85,11 +85,9 @@ fn run_with_rust_flag(args: &Args, rustflags: bool) -> Result<()> {
         if let Some(extension) = path.as_path().extension() {
             if extension.to_string_lossy() == "wasm" {
                 let file_name = path.as_path().file_name().unwrap();
-                println!(
-                    "file {:?} contains_absolute_paths: {:?}",
-                    file_name,
-                    if_contains_absolute_paths(&path)?
-                );
+                let res = if_contains_absolute_paths(&path)?;
+                println!("file {:?} contains_absolute_paths: {:?}", file_name, res,);
+                assert_eq!(res, !rustflags);
             }
         }
     }
