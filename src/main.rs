@@ -18,15 +18,19 @@ struct Args {
 
 fn main() -> Result<()> {
     let args = Args::parse();
-    run(&args, Strip::Yes)?;
-    run(&args, Strip::No)?;
+    run("soroban_eth_abi", &args, Strip::Yes)?;
+    run("soroban_eth_abi", &args, Strip::No)?;
     Ok(())
 }
 
 #[derive(Eq, PartialEq)]
 enum Strip { Yes, No }
 
-fn run(args: &Args, strip: Strip) -> Result<()> {
+fn run(
+    contract_name: &str,
+    args: &Args,
+    strip: Strip,
+) -> Result<()> {
     let stellar_cli = "../stellar-cli/target/debug/soroban";
     let mut cmd = Command::new(stellar_cli);
     cmd.arg("contract");
@@ -69,18 +73,14 @@ fn run(args: &Args, strip: Strip) -> Result<()> {
         &PathBuf::from(wasm_dir)
     };
 
-    for entry in fs::read_dir(wasm_dir)? {
-        let entry = entry?;
-        let path = entry.path();
-        if let Some(extension) = path.as_path().extension() {
-            if extension.to_string_lossy() == "wasm" {
-                let file_name = path.as_path().file_name().unwrap();
-                let res = contains_absolute_paths(&path)?;
-                println!("file {:?} contains_absolute_paths: {:?}", file_name, res,);
-                assert_eq!(res, strip == Strip::Yes);
-            }
-        }
-    }
+    let manifest_dir = args.manifest_path.parent().expect("path");
+    let wasm_path = manifest_dir
+        .join("target/wasm32-unknown-unknown/release")
+        .join(format!("{contract_name}.wasm"));
+
+    let res = contains_absolute_paths(&wasm_path)?;
+    assert_eq!(res, strip == Strip::Yes);
+
     Ok(())
 }
 
