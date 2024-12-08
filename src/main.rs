@@ -1,7 +1,6 @@
 use anyhow::{anyhow, Result};
-use cargo_metadata::MetadataCommand;
 use clap::Parser;
-use std::{borrow::Cow, ffi::OsStr, fs, path::PathBuf, process::Command};
+use std::{borrow::Cow, ffi::OsStr, fs, path::{Path, PathBuf}, process::Command};
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -12,8 +11,8 @@ struct Args {
 
 fn main() -> Result<()> {
     let args = Args::parse();
-    let strip_has_abs_paths = run("soroban_eth_abi", &args, Strip::Yes)?;
-    let nostrip_has_abs_paths = run("soroban_eth_abi", &args, Strip::No)?;
+    let strip_has_abs_paths = run("soroban_eth_abi", &args.manifest_path, Strip::Yes)?;
+    let nostrip_has_abs_paths = run("soroban_eth_abi", &args.manifest_path, Strip::No)?;
 
     assert_eq!(strip_has_abs_paths, false);
     assert_eq!(nostrip_has_abs_paths, true);
@@ -26,7 +25,7 @@ enum Strip { Yes, No }
 
 fn run(
     contract_name: &str,
-    args: &Args,
+    manifest_path: &Path,
     strip: Strip,
 ) -> Result<bool> {
     let stellar_cli = "../stellar-cli/target/debug/soroban";
@@ -35,7 +34,7 @@ fn run(
     cmd.arg("build");
     cmd.arg(format!(
         "--manifest-path={}",
-        args.manifest_path.to_string_lossy()
+        manifest_path.to_string_lossy()
     ));
 
     if strip == Strip::No {
@@ -52,7 +51,7 @@ fn run(
         return Err(anyhow!("failed building with stellar: {cmd_str:?}"));
     }
 
-    let manifest_dir = args.manifest_path.parent().expect("path");
+    let manifest_dir = manifest_path.parent().expect("path");
     let wasm_path = manifest_dir
         .join("target/wasm32-unknown-unknown/release")
         .join(format!("{contract_name}.wasm"));
