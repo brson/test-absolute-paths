@@ -8,12 +8,6 @@ struct Args {
     /// Path to Cargo.toml
     #[arg(long)]
     manifest_path: PathBuf,
-    /// Build with the specified profile
-    #[arg(long, default_value = "release")]
-    profile: String,
-    /// Directory to copy wasm files to
-    #[arg(long)]
-    out_dir: Option<std::path::PathBuf>,
 }
 
 fn main() -> Result<()> {
@@ -43,11 +37,6 @@ fn run(
         "--manifest-path={}",
         args.manifest_path.to_string_lossy()
     ));
-    cmd.arg(format!("--profile={}", args.profile));
-
-    if let Some(ref out_dir) = args.out_dir {
-        cmd.arg(format!("--out-dir={}", out_dir.display()));
-    };
 
     if strip == Strip::No {
         // This will prevent stellar-cli from setting CARGO_BUILD_RUSTFLAGS,
