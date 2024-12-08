@@ -18,8 +18,12 @@ struct Args {
 
 fn main() -> Result<()> {
     let args = Args::parse();
-    run("soroban_eth_abi", &args, Strip::Yes)?;
-    run("soroban_eth_abi", &args, Strip::No)?;
+    let strip_has_abs_paths = run("soroban_eth_abi", &args, Strip::Yes)?;
+    let nostrip_has_abs_paths = run("soroban_eth_abi", &args, Strip::No)?;
+
+    assert_eq!(strip_has_abs_paths, false);
+    assert_eq!(nostrip_has_abs_paths, true);
+
     Ok(())
 }
 
@@ -30,7 +34,7 @@ fn run(
     contract_name: &str,
     args: &Args,
     strip: Strip,
-) -> Result<()> {
+) -> Result<bool> {
     let stellar_cli = "../stellar-cli/target/debug/soroban";
     let mut cmd = Command::new(stellar_cli);
     cmd.arg("contract");
@@ -45,7 +49,7 @@ fn run(
         cmd.arg(format!("--out-dir={}", out_dir.display()));
     };
 
-    if strip == Strip::Yes {
+    if strip == Strip::No {
         // This will prevent stellar-cli from setting CARGO_BUILD_RUSTFLAGS,
         // and removing absolute paths.
         // See docs for `make_rustflags_to_remap_absolute_paths`.
@@ -59,29 +63,12 @@ fn run(
         return Err(anyhow!("failed building with stellar: {cmd_str:?}"));
     }
 
-    let wasm_dir = if let Some(wasm_dir) = &args.out_dir {
-        wasm_dir
-    } else {
-        let metadata = MetadataCommand::new()
-            .manifest_path(&args.manifest_path)
-            .no_deps()
-            .exec()?;
-        let target_dir = metadata.target_directory;
-        let wasm_dir = target_dir
-            .join("wasm32-unknown-unknown")
-            .join(&args.profile);
-        &PathBuf::from(wasm_dir)
-    };
-
     let manifest_dir = args.manifest_path.parent().expect("path");
     let wasm_path = manifest_dir
         .join("target/wasm32-unknown-unknown/release")
         .join(format!("{contract_name}.wasm"));
 
-    let res = contains_absolute_paths(&wasm_path)?;
-    assert_eq!(res, strip == Strip::Yes);
-
-    Ok(())
+    contains_absolute_paths(&wasm_path)
 }
 
 fn contains_absolute_paths(wasm: &PathBuf) -> Result<bool> {
