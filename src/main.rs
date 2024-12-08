@@ -59,6 +59,7 @@ fn run(
     contains_absolute_paths(&wasm_path)
 }
 
+// Look through the wasm for the absolute path to the crate registry.
 fn contains_absolute_paths(wasm: &PathBuf) -> Result<bool> {
     let cargo_home = home::cargo_home()?;
     let registry_prefix = format!("{}/registry/src/", &cargo_home.display());
