@@ -18,12 +18,15 @@ struct Args {
 
 fn main() -> Result<()> {
     let args = Args::parse();
-    run_with_rust_flag(&args, true)?;
-    run_with_rust_flag(&args, false)?;
+    run(&args, Strip::Yes)?;
+    run(&args, Strip::No)?;
     Ok(())
 }
 
-fn run_with_rust_flag(args: &Args, rustflags: bool) -> Result<()> {
+#[derive(Eq, PartialEq)]
+enum Strip { Yes, No }
+
+fn run(args: &Args, strip: Strip) -> Result<()> {
     let stellar_cli = "../stellar-cli/target/debug/soroban";
     let mut cmd = Command::new(stellar_cli);
     cmd.arg("contract");
@@ -38,7 +41,7 @@ fn run_with_rust_flag(args: &Args, rustflags: bool) -> Result<()> {
         cmd.arg(format!("--out-dir={}", out_dir.display()));
     };
 
-    if rustflags {
+    if strip == Strip::Yes {
         // This will prevent stellar-cli from setting CARGO_BUILD_RUSTFLAGS,
         // and removing absolute paths.
         // See docs for `make_rustflags_to_remap_absolute_paths`.
@@ -74,7 +77,7 @@ fn run_with_rust_flag(args: &Args, rustflags: bool) -> Result<()> {
                 let file_name = path.as_path().file_name().unwrap();
                 let res = contains_absolute_paths(&path)?;
                 println!("file {:?} contains_absolute_paths: {:?}", file_name, res,);
-                assert_eq!(res, rustflags);
+                assert_eq!(res, strip == Strip::Yes);
             }
         }
     }
