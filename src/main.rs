@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Result};
 use cargo_metadata::MetadataCommand;
 use clap::Parser;
-use std::{borrow::Cow, env, ffi::OsStr, fs, path::PathBuf, process::Command};
+use std::{borrow::Cow, ffi::OsStr, fs, path::PathBuf, process::Command};
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -24,8 +24,7 @@ fn main() -> Result<()> {
 }
 
 fn run_with_rust_flag(args: &Args, rustflags: bool) -> Result<()> {
-    // let stellar_cli = "../stellar-cli/target/debug/soroban";
-    let stellar_cli = "stellar";
+    let stellar_cli = "../stellar-cli/target/debug/soroban";
     let mut cmd = Command::new(stellar_cli);
     cmd.arg("contract");
     cmd.arg("build");
@@ -40,29 +39,17 @@ fn run_with_rust_flag(args: &Args, rustflags: bool) -> Result<()> {
     };
 
     if rustflags {
-        let cargo_home = home::cargo_home()?;
-        let registry_prefix = format!("{}/registry/src/", &cargo_home.display());
-        let new_rustflag = format!("--remap-path-prefix={registry_prefix}=");
-
-        let mut rustflags = if let Ok(args) = env::var("CARGO_BUILD_RUSTFLAGS") {
-            args.split_whitespace()
-                .map(str::trim)
-                .filter(|s| !s.is_empty())
-                .map(str::to_string)
-                .collect()
-        } else {
-            Vec::<String>::new()
-        };
-        rustflags.push(new_rustflag);
-        let rustflags = rustflags.join(" ");
-        cmd.env("CARGO_BUILD_RUSTFLAGS", rustflags);
+        // This will prevent stellar-cli from setting CARGO_BUILD_RUSTFLAGS,
+        // and removing absolute paths.
+        // See docs for `make_rustflags_to_remap_absolute_paths`.
+        cmd.env("RUSTFLAGS", "");
     }
 
     let cmd_str = print_cmd(&cmd)?;
 
     let status = cmd.status()?;
     if !status.success() {
-        return Err(anyhow!("Failed building with Stellar: {cmd_str:?}"));
+        return Err(anyhow!("failed building with stellar: {cmd_str:?}"));
     }
 
     let wasm_dir = if let Some(wasm_dir) = &args.out_dir {
@@ -85,16 +72,16 @@ fn run_with_rust_flag(args: &Args, rustflags: bool) -> Result<()> {
         if let Some(extension) = path.as_path().extension() {
             if extension.to_string_lossy() == "wasm" {
                 let file_name = path.as_path().file_name().unwrap();
-                let res = if_contains_absolute_paths(&path)?;
+                let res = contains_absolute_paths(&path)?;
                 println!("file {:?} contains_absolute_paths: {:?}", file_name, res,);
-                assert_eq!(res, !rustflags);
+                assert_eq!(res, rustflags);
             }
         }
     }
     Ok(())
 }
 
-fn if_contains_absolute_paths(wasm: &PathBuf) -> Result<bool> {
+fn contains_absolute_paths(wasm: &PathBuf) -> Result<bool> {
     let cargo_home = home::cargo_home()?;
     let registry_prefix = format!("{}/registry/src/", &cargo_home.display());
 
@@ -117,7 +104,7 @@ fn print_cmd(cmd: &Command) -> Result<String> {
             shell_escape::escape(val.unwrap_or_default().to_string_lossy())
         )
     }));
-    cmd_str_parts.push("cargo".to_string());
+    cmd_str_parts.push("(stellar-cli)".to_string());
     cmd_str_parts.extend(
         cmd.get_args()
             .map(OsStr::to_string_lossy)
